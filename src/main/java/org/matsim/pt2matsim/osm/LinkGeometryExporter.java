@@ -56,6 +56,31 @@ public class LinkGeometryExporter {
 		}
 	}
 
+	public Coord[] getGeometryCoords(Id<Link> linkId) {
+		LinkDefinition linkDefinition = linkDefinitions.get(linkId);
+		int fromIndex = linkDefinition.way.getNodes().indexOf(linkDefinition.fromNode);
+		int toIndex = linkDefinition.way.getNodes().indexOf(linkDefinition.toNode);
+		if (fromIndex < 0 || toIndex < 0) {
+			return new Coord[0];
+		}
+
+		List<Osm.Node> geometryNodes;
+		if (fromIndex < toIndex) {
+			geometryNodes = linkDefinition.way.getNodes().subList(fromIndex, toIndex + 1);
+		} else {
+			geometryNodes = Lists.reverse(linkDefinition.way.getNodes().subList(toIndex, fromIndex + 1));
+		}
+		Coord[] coords = new Coord[geometryNodes.size()];
+		for (int i = 0; i < geometryNodes.size(); i++) {
+			coords[i] = geometryNodes.get(i).getCoord();
+		}
+		return coords;
+	}
+	public Optional<String> getGeometryString(Id<Link> linkId) {
+		LinkDefinition linkDefinition = linkDefinitions.get(linkId);
+		return toWkt(linkDefinition);
+	}
+
 	private static Optional<String> toWkt(LinkDefinition linkDefinition) {
 		int fromIndex = linkDefinition.way.getNodes().indexOf(linkDefinition.fromNode);
 		int toIndex = linkDefinition.way.getNodes().indexOf(linkDefinition.toNode);

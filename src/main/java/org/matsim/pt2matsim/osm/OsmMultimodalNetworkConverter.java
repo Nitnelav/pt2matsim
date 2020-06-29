@@ -625,6 +625,11 @@ public class OsmMultimodalNetworkConverter {
 					link.getAttributes().putAttribute(osmRouteMasterKey, CollectionUtils.setToString(attr));
 				}
 			}
+
+			boolean geometryAsAttribute = true;
+			if (geometryAsAttribute) {
+				link.getAttributes().putAttribute("geometry", geometryExporter.getGeometryString(link.getId()));
+			}
 		}
 	}
 
