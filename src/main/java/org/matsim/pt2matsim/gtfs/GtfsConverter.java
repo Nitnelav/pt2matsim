@@ -57,6 +57,7 @@ public class GtfsConverter {
 	protected Vehicles vehiclesContainer;
 
 	protected int noStopTimeTrips;
+	protected int stopPairsWithoutOffset;
 
 	public GtfsConverter(GtfsFeed gtfsFeed) {
 		this.feed = gtfsFeed;
@@ -99,7 +100,7 @@ public class GtfsConverter {
 
 		// get sample date
 		LocalDate extractDate = getExtractDate(serviceIdsParam);
-		if(extractDate != null) log.info("     Extracting schedule from date " + extractDate);
+		if(extractDate != null) log.info("    Extracting schedule from date " + extractDate);
 
 		// generate TransitStopFacilities from gtfsStops and add them to the schedule
 		createStopFacilities(schedule);
@@ -201,6 +202,9 @@ public class GtfsConverter {
 		if(noStopTimeTrips > 0) {
 			log.warn(noStopTimeTrips + " trips without stop times were not converted");
 		}
+		if(stopPairsWithoutOffset > 0) {
+			log.warn(stopPairsWithoutOffset + " trips contain stops with equal departure times.");
+		}
 	}
 
 	/**
@@ -219,7 +223,7 @@ public class GtfsConverter {
 	protected TransitRoute createTransitRoute(Trip trip, Map<Id<TransitStopFacility>, TransitStopFacility> stopFacilities) {
 		Id<RouteShape> shapeId = trip.getShape() != null ? trip.getShape().getId() : null;
 
-		if(trip.getStopTimes().size() == 0) {
+		if(trip.getStopTimes().size() <= 1) {
 			noStopTimeTrips++;
 			return null;
 		}
@@ -228,10 +232,18 @@ public class GtfsConverter {
 		List<TransitRouteStop> transitRouteStops = new ArrayList<>();
 
 		// create transit route stops
+		boolean hasStopPairsWithoutOffset = false;
+		int prevStopDepartureTime = -1;
 		for(StopTime stopTime : trip.getStopTimes()) {
 			TransitRouteStop newTransitRouteStop = createTransitRouteStop(stopTime, trip, stopFacilities);
 			transitRouteStops.add(newTransitRouteStop);
+
+			if(stopTime.getDepartureTime() == prevStopDepartureTime) {
+				hasStopPairsWithoutOffset = true;
+			}
+			prevStopDepartureTime = stopTime.getDepartureTime();
 		}
+		if(hasStopPairsWithoutOffset) stopPairsWithoutOffset++;
 
 		// Calculate departures from frequencies (if available)
 		TransitRoute transitRoute;
@@ -244,7 +256,6 @@ public class GtfsConverter {
 					transitRoute.addDeparture(newDeparture);
 				}
 			}
-			return transitRoute;
 		} else {
 			// Calculate departures from stopTimes
 			int routeStartTime = trip.getStopTimes().first().getDepartureTime();
@@ -252,20 +263,17 @@ public class GtfsConverter {
 			transitRoute = this.scheduleFactory.createTransitRoute(createTransitRouteId(trip), null, transitRouteStops, trip.getRoute().getRouteType().name);
 			Departure newDeparture = this.scheduleFactory.createDeparture(createDepartureId(transitRoute, routeStartTime), routeStartTime);
 			transitRoute.addDeparture(newDeparture);
-
-			if(shapeId != null) ScheduleTools.setShapeId(transitRoute, trip.getShape().getId());
-
-			return transitRoute;
 		}
+		if(shapeId != null) ScheduleTools.setShapeId(transitRoute, trip.getShape().getId());
+		return transitRoute;
 	}
 
 	protected TransitRouteStop createTransitRouteStop(StopTime stopTime, Trip trip, Map<Id<TransitStopFacility>, TransitStopFacility> stopFacilities) {
-		double arrivalOffset = Time.UNDEFINED_TIME, departureOffset = Time.UNDEFINED_TIME;
+		double arrivalOffset = Time.getUndefinedTime(), departureOffset = Time.getUndefinedTime();
 
 		int routeStartTime = trip.getStopTimes().first().getArrivalTime();
 		int firstSequencePos = trip.getStopTimes().first().getSequencePosition();
 		int lastSequencePos = trip.getStopTimes().last().getSequencePosition();
-
 
 		// add arrivalOffset time if current stopTime is not on the first stop of the route
 		if(!stopTime.getSequencePosition().equals(firstSequencePos)) {
@@ -332,7 +340,7 @@ public class GtfsConverter {
 			for(TransitRoute route : line.getRoutes().values()) {
 				// create a vehicle for each departure
 				for(Departure departure : route.getDepartures().values()) {
-					String vehicleId = "veh_" + Long.toString(vehId++) + "_" + route.getTransportMode().replace(" ", "_");
+					String vehicleId = "veh_" + vehId++ + "_" + route.getTransportMode().replace(" ", "_");
 					Vehicle veh = vf.createVehicle(Id.create(vehicleId, Vehicle.class), vehicleType);
 					vehicles.addVehicle(veh);
 					departure.setVehicleId(veh.getId());

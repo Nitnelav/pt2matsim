@@ -102,12 +102,6 @@ public final class CheckMappedSchedulePlausibility {
 		check.writeCsv(outputFolder + "allPlausibilityWarnings.csv");
 		check.writeResultsGeojson( outputFolder + "plausibilityWarnings.geojson");
 
-		// "legacy" shapefile output
-		if(false) {
-			new File(outputFolder + "warnings_shp/").mkdir();
-			check.writeResultShapeFiles(outputFolder + "warnings_shp/");
-		}
-
 		// transit schedule as geojson
 		Schedule2Geojson schedule2geojson = new Schedule2Geojson(coordinateSystem, schedule, network);
 		schedule2geojson.writeTransitRoutes(outputFolder + "schedule_TransitRoutes.geojson");
@@ -120,7 +114,7 @@ public final class CheckMappedSchedulePlausibility {
 		histogram.createPng(outputFolder + "stopfacilities_histogram.png");
 
 		// write network
-		Network2Geojson.run(network, outputFolder + "network.geojson");
+		Network2Geojson.run(coordinateSystem, network, outputFolder + "network.geojson");
 
 		check.printStatisticsLog();
 	}

@@ -200,22 +200,22 @@ public class GtfsFeedImpl implements GtfsFeed {
 			while(line != null) {
 				l++;
 				String stopId = line[col.get(GtfsDefinitions.STOP_ID)];
-				Stop stop = new StopImpl(stopId, line[col.get(GtfsDefinitions.STOP_NAME)], Double.parseDouble(line[col.get(GtfsDefinitions.STOP_LON)]), Double.parseDouble(line[col.get(GtfsDefinitions.STOP_LAT)]));
+				StopImpl stop = new StopImpl(stopId, line[col.get(GtfsDefinitions.STOP_NAME)], Double.parseDouble(line[col.get(GtfsDefinitions.STOP_LON)]), Double.parseDouble(line[col.get(GtfsDefinitions.STOP_LAT)]));
 				stops.put(stopId, stop);
 
 				// location type
 				if(col.get(GtfsDefinitions.LOCATION_TYPE) != null) {
 					if(line[col.get(GtfsDefinitions.LOCATION_TYPE)].equals("0")) {
-						((StopImpl) stop).setLocationType(GtfsDefinitions.LocationType.STOP);
+						stop.setLocationType(GtfsDefinitions.LocationType.STOP);
 					}
 					if(line[col.get(GtfsDefinitions.LOCATION_TYPE)].equals("1")) {
-						((StopImpl) stop).setLocationType(GtfsDefinitions.LocationType.STATION);
+						stop.setLocationType(GtfsDefinitions.LocationType.STATION);
 					}
 				}
 
 				// parent station
 				if(col.get(GtfsDefinitions.PARENT_STATION) != null && !line[col.get(GtfsDefinitions.PARENT_STATION)].isEmpty()) {
-					((StopImpl) stop).setParentStation(line[col.get(GtfsDefinitions.PARENT_STATION)]);
+					stop.setParentStation(line[col.get(GtfsDefinitions.PARENT_STATION)]);
 				}
 
 				line = reader.readNext();
@@ -236,7 +236,6 @@ public class GtfsFeedImpl implements GtfsFeed {
 	 * Dates for service IDs using a weekly schedule. Specify when service starts and ends,
 	 * as well as days of the week where service is available.
 	 *
-	 * @throws IOException
 	 */
 	protected boolean loadCalendar() {
 		log.info("Loading calendar.txt");
@@ -367,8 +366,6 @@ public class GtfsFeedImpl implements GtfsFeed {
 		}
 	}
 
-	final protected Set<String> ignoredRoutes = new HashSet<>();
-
 	/**
 	 * Basically just reads all routeIds and their corresponding names and types and puts them in {@link #routes}.
 	 * <p/>
@@ -395,15 +392,14 @@ public class GtfsFeedImpl implements GtfsFeed {
 				ExtendedRouteType extendedRouteType = RouteType.getExtendedRouteType(routeTypeNr);
 
 				if(extendedRouteType == null) {
-					log.warn("Route " + line[col.get(GtfsDefinitions.ROUTE_ID)] + " of type " + routeTypeNr + " will be ignored");
-					ignoredRoutes.add(line[col.get(GtfsDefinitions.ROUTE_ID)]);
-				} else {
-					String routeId = line[col.get(GtfsDefinitions.ROUTE_ID)];
-					String shortName = line[col.get(GtfsDefinitions.ROUTE_SHORT_NAME)];
-					String longName = line[col.get(GtfsDefinitions.ROUTE_LONG_NAME)];
-					Route newGtfsRoute = new RouteImpl(routeId, shortName, longName, extendedRouteType);
-					routes.put(line[col.get(GtfsDefinitions.ROUTE_ID)], newGtfsRoute);
+					log.warn("Route " + line[col.get(GtfsDefinitions.ROUTE_ID)] + " has unknown extended route type " + routeTypeNr);
+					extendedRouteType = ExtendedRouteType.Unknown;
 				}
+				String routeId = line[col.get(GtfsDefinitions.ROUTE_ID)];
+				String shortName = line[col.get(GtfsDefinitions.ROUTE_SHORT_NAME)];
+				String longName = line[col.get(GtfsDefinitions.ROUTE_LONG_NAME)];
+				Route newGtfsRoute = new RouteImpl(routeId, shortName, longName, extendedRouteType);
+				routes.put(line[col.get(GtfsDefinitions.ROUTE_ID)], newGtfsRoute);
 
 				line = reader.readNext();
 			}
@@ -449,11 +445,7 @@ public class GtfsFeedImpl implements GtfsFeed {
 					throw new IllegalStateException("Service " + serviceId + " not found");
 				}
 				if(route == null) {
-					if(!ignoredRoutes.contains(routeId)) {
-						throw new IllegalStateException("Route " + routeId + " not found");
-					} else {
-						ignoredTrips.add(line[col.get(GtfsDefinitions.TRIP_ID)]);
-					}
+					ignoredTrips.add(line[col.get(GtfsDefinitions.TRIP_ID)]);
 				} else {
 					if(usesShapes) {
 						Id<RouteShape> shapeId = Id.create(line[col.get(GtfsDefinitions.SHAPE_ID)], RouteShape.class); // column might not be available

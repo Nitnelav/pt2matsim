@@ -18,8 +18,6 @@
 
 package org.matsim.pt2matsim.run;
 
-import org.matsim.core.config.Config;
-import org.matsim.core.config.ConfigUtils;
 import org.matsim.pt2matsim.config.OsmConverterConfigGroup;
 import org.matsim.pt2matsim.osm.OsmMultimodalNetworkConverter;
 import org.matsim.pt2matsim.osm.lib.*;
@@ -58,9 +56,7 @@ public final class Osm2MultimodalNetwork {
 	 * @param configFile the config.xml file
 	 */
 	public static void run(String configFile) {
-		Config configAll = ConfigUtils.loadConfig(configFile, new OsmConverterConfigGroup());
-		OsmConverterConfigGroup config = ConfigUtils.addOrGetModule(configAll, OsmConverterConfigGroup.GROUP_NAME, OsmConverterConfigGroup.class );
-
+		OsmConverterConfigGroup config = OsmConverterConfigGroup.loadConfig(configFile);
 		run(config);
 	}
 
@@ -83,7 +79,6 @@ public final class Osm2MultimodalNetwork {
 		AllowedTagsFilter filter = new AllowedTagsFilter();
 		filter.add(Osm.ElementType.WAY, Osm.Key.HIGHWAY, null);
 		filter.add(Osm.ElementType.WAY, Osm.Key.RAILWAY, null);
-
 
 		OsmData osmData = new OsmDataImpl(filter);
 		new OsmFileReader(osmData).readFile(config.getOsmFile());
